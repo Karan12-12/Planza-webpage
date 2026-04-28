@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -82,7 +82,7 @@ function LikeButton({ size = "sm" }: { id: string; size?: "sm" | "lg" }) {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function PortfolioDetail() {
-  const { id } = useParams<{ id: string }>();
+  // const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
 

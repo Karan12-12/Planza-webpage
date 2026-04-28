@@ -1193,7 +1193,7 @@ function PortfolioEntryCard({
           )}
           {(entry.existingVideoUrls || []).length > 0 && (
             <div className="flex flex-col gap-1 mb-2">
-              {entry.existingVideoUrls!.map((url, i) => (
+              {entry.existingVideoUrls!.map((_, i) => (
                 <div
                   key={i}
                   className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2"
@@ -1224,7 +1224,7 @@ function Step5Portfolio({
   set,
   services,
   loadingServices,
-  fetchError,
+  // fetchError,
 }: {
   form: FormData;
   set: (k: keyof FormData, v: any) => void;
@@ -1687,6 +1687,7 @@ export default function VendorUpdate() {
       const formPayload = new FormData();
 
       const jsonData = {
+        MobileNumber:form.MobileNumber,
         name: form.name,
         area_served: form.area_served,
         FromPrice: Number(form.FromPrice),
