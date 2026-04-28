@@ -38,9 +38,9 @@ interface PortfolioEntry {
   category: string;
   subCategory: string;
   eventDate: string;
-  eventTime: string; // kept for backward compat (computed as "HH:MM – HH:MM")
-  eventTimeStart: string;
-  eventTimeEnd: string;
+  // eventTime: string; // kept for backward compat (computed as "HH:MM – HH:MM")
+  // eventTimeStart: string;
+  // eventTimeEnd: string;
   location: string;
   budget: string;
   brief: string;
@@ -877,9 +877,9 @@ function newEntry(): PortfolioEntry {
     category: "",
     subCategory: "",
     eventDate: "",
-    eventTime: "",
-    eventTimeStart: "",
-    eventTimeEnd: "",
+    // eventTime: "",
+    // eventTimeStart: "",
+    // eventTimeEnd: "",
     location: "",
     budget: "",
     brief: "",
@@ -1171,7 +1171,7 @@ function PortfolioEntryCard({
                 />
               </div>
             </div>
-            <div>
+            {/* <div>
               <Label>Event Time</Label>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -1220,7 +1220,7 @@ function PortfolioEntryCard({
                   🕐 {entry.eventTimeStart} – {entry.eventTimeEnd}
                 </p>
               )}
-            </div>
+            </div> */}
           </div>
 
           {/* Location + Budget */}
@@ -2061,7 +2061,7 @@ export default function VendorOnboarding() {
           category: e.category,
           subCategory: e.subCategory,
           eventDate: e.eventDate,
-          eventTime: e.eventTime,
+          // eventTime: e.eventTime,
           location: e.location,
           budget: Number(e.budget) || 0,
           brief: e.brief,
@@ -2086,8 +2086,8 @@ export default function VendorOnboarding() {
         );
 
         if (entry.thumbnail) {
-  formPayload.append("portfolio_thumbnail_images", entry.thumbnail);
-}
+          formPayload.append("portfolio_thumbnail_images", entry.thumbnail);
+        }
         entry.videos.forEach((file) =>
           formPayload.append(`portfolio_${idx}_videos`, file),
         );
