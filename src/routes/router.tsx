@@ -10,6 +10,7 @@ const VendorProfile = lazy(() => import("../pages/VendorProfile"));
 const PortfolioDetail = lazy(() => import("../pages/PortfolioDetail"));
 const AskQuestion = lazy(() => import("../pages/AskQuestion"));
 const VendorOnboarding = lazy(() => import("../pages/VendorOnboarding"));
+const VendorUpdate = lazy(()=>import("../pages/VendorOnboardingUpdate"))
 
 // Loader component
 const Loader = () => (
@@ -43,7 +44,7 @@ export const router = createBrowserRouter([
       //   ),
       // },
       {
-        path: "vendor",
+        path: "vendor/:vendorId",
         element: (
           <Suspense fallback={<Loader />}>
             <VendorProfile />
@@ -71,6 +72,14 @@ export const router = createBrowserRouter([
         element: (
           <Suspense fallback={<Loader />}>
             <VendorOnboarding />
+          </Suspense>
+        ),
+      },
+          {
+        path: "vendor/updateVendor/:vendorId",
+        element: (
+          <Suspense fallback={<Loader />}>
+            <VendorUpdate />
           </Suspense>
         ),
       },

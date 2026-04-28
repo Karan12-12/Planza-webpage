@@ -33,3 +33,36 @@ export const createVendorOnboarding = async (
     return err?.response?.data;
   }
 };
+
+
+export const getVendorDetails = async (
+id:string
+): Promise<AxiosResponse | unknown> => {
+    console.log("get vedor called")
+  try {
+    const response = await api.get(`/dash/getVendorForUpdate/${id}`);
+    console.log(response.data)
+    return response.data;
+  } catch (error) {
+      const err = error as AxiosError<any>;
+    return err?.response?.data;
+  }
+};
+
+
+export const updateVendorAPI = async (
+  id: string,
+  payload:any
+): Promise<AxiosResponse | unknown> => {
+  try {
+    const response = await api.post(`/dash/updateVendor/${id}`, payload);
+
+    return response.data;
+  } catch (error) {
+      const err = error as AxiosError<any>;
+    return err?.response?.data;
+  }
+};
+
+
+
