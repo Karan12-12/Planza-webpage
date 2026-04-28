@@ -881,12 +881,8 @@ function PortfolioEntryCard({
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
     const newPreviews = files.map((f) => URL.createObjectURL(f));
-    // Fix: single onChange call so neither field overwrites the other
-    onChange({
-      ...entry,
-      images: [...entry.images, ...files],
-      imagePreviewUrls: [...entry.imagePreviewUrls, ...newPreviews],
-    });
+    upd("images", [...entry.images, ...files]);
+    upd("imagePreviewUrls", [...entry.imagePreviewUrls, ...newPreviews]);
     e.target.value = "";
   };
 
@@ -894,47 +890,33 @@ function PortfolioEntryCard({
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
     const newPreviews = files.map((f) => URL.createObjectURL(f));
-    // Fix: single onChange call so neither field overwrites the other
-    onChange({
-      ...entry,
-      videos: [...entry.videos, ...files],
-      videoPreviewUrls: [...entry.videoPreviewUrls, ...newPreviews],
-    });
+    upd("videos", [...entry.videos, ...files]);
+    upd("videoPreviewUrls", [...entry.videoPreviewUrls, ...newPreviews]);
     e.target.value = "";
   };
 
   const removeImage = (i: number) => {
     URL.revokeObjectURL(entry.imagePreviewUrls[i]);
-    // Fix: single onChange call so neither field overwrites the other
-    onChange({
-      ...entry,
-      images: entry.images.filter((_, idx) => idx !== i),
-      imagePreviewUrls: entry.imagePreviewUrls.filter((_, idx) => idx !== i),
-    });
+    upd(
+      "images",
+      entry.images.filter((_, idx) => idx !== i),
+    );
+    upd(
+      "imagePreviewUrls",
+      entry.imagePreviewUrls.filter((_, idx) => idx !== i),
+    );
   };
 
   const removeVideo = (i: number) => {
     URL.revokeObjectURL(entry.videoPreviewUrls[i]);
-    // Fix: single onChange call so neither field overwrites the other
-    onChange({
-      ...entry,
-      videos: entry.videos.filter((_, idx) => idx !== i),
-      videoPreviewUrls: entry.videoPreviewUrls.filter((_, idx) => idx !== i),
-    });
-  };
-
-  const removeExistingImage = (i: number) => {
-    onChange({
-      ...entry,
-      existingImageUrls: (entry.existingImageUrls || []).filter((_, idx) => idx !== i),
-    });
-  };
-
-  const removeExistingVideo = (i: number) => {
-    onChange({
-      ...entry,
-      existingVideoUrls: (entry.existingVideoUrls || []).filter((_, idx) => idx !== i),
-    });
+    upd(
+      "videos",
+      entry.videos.filter((_, idx) => idx !== i),
+    );
+    upd(
+      "videoPreviewUrls",
+      entry.videoPreviewUrls.filter((_, idx) => idx !== i),
+    );
   };
 
   const selectedSvc = services.find((s) => s.id === entry.category);
@@ -1144,13 +1126,6 @@ function PortfolioEntryCard({
                   <span className="absolute top-1 left-1 text-xs bg-blue-500 text-white rounded-full px-1.5 py-0.5 font-bold">
                     ✓
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => removeExistingImage(i)}
-                    className="absolute top-1 right-1 w-5 h-5 bg-black/60 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition text-xs"
-                  >
-                    ✕
-                  </button>
                 </div>
               ))}
               {entry.imagePreviewUrls.map((url, i) => (
@@ -1227,13 +1202,6 @@ function PortfolioEntryCard({
                   <span className="flex-1 text-xs text-blue-700 font-medium truncate">
                     Existing video {i + 1}
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => removeExistingVideo(i)}
-                    className="text-xs text-red-400 hover:text-red-600 font-semibold"
-                  >
-                    Remove
-                  </button>
                 </div>
               ))}
             </div>
@@ -1719,7 +1687,7 @@ export default function VendorUpdate() {
       const formPayload = new FormData();
 
       const jsonData = {
-        MobileNumber:form.MobileNumber,
+        MobileNumber: form.MobileNumber,
         name: form.name,
         area_served: form.area_served,
         FromPrice: Number(form.FromPrice),
@@ -1768,9 +1736,8 @@ export default function VendorUpdate() {
         entry.images.forEach((file) =>
           formPayload.append(`portfolio_${idx}_images`, file),
         );
-        // Fix: use per-entry field name so each portfolio entry has its own thumbnail
         if (entry.thumbnail)
-          formPayload.append(`portfolio_${idx}_thumbnail`, entry.thumbnail);
+          formPayload.append("portfolio_thumbnail_images", entry.thumbnail);
         entry.videos.forEach((file) =>
           formPayload.append(`portfolio_${idx}_videos`, file),
         );
