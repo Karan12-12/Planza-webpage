@@ -1774,7 +1774,7 @@ export default function VendorUpdate() {
         );
         // Fix: use per-entry field name so each portfolio entry has its own thumbnail
         if (entry.thumbnail)
-          formPayload.append(`portfolio_${idx}_thumbnail`, entry.thumbnail);
+          formPayload.append(`portfolio_${idx}_thumbnail_images`, entry.thumbnail);
         entry.videos.forEach((file) =>
           formPayload.append(`portfolio_${idx}_videos`, file),
         );
