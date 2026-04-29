@@ -55,7 +55,7 @@ interface VendorData {
 function fileUrl(filename: string | null | undefined): string | null {
   if (!filename) return null;
   if (filename.startsWith("http")) return filename;
-  return `${UPLOADS_BASE_URL}/src/uploads/vendor/portfolio/images/${filename}`;
+  return `${UPLOADS_BASE_URL}/uploads/vendor/portfolio/images/${filename}`;
 }
 
 function formatDate(iso: string): string {

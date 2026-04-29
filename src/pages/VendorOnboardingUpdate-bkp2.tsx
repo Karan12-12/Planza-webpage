@@ -926,14 +926,18 @@ function PortfolioEntryCard({
   const removeExistingImage = (i: number) => {
     onChange({
       ...entry,
-      existingImageUrls: (entry.existingImageUrls || []).filter((_, idx) => idx !== i),
+      existingImageUrls: (entry.existingImageUrls || []).filter(
+        (_, idx) => idx !== i,
+      ),
     });
   };
 
   const removeExistingVideo = (i: number) => {
     onChange({
       ...entry,
-      existingVideoUrls: (entry.existingVideoUrls || []).filter((_, idx) => idx !== i),
+      existingVideoUrls: (entry.existingVideoUrls || []).filter(
+        (_, idx) => idx !== i,
+      ),
     });
   };
 
@@ -1719,7 +1723,7 @@ export default function VendorUpdate() {
       const formPayload = new FormData();
 
       const jsonData = {
-        MobileNumber:form.MobileNumber,
+        MobileNumber: form.MobileNumber,
         name: form.name,
         area_served: form.area_served,
         FromPrice: Number(form.FromPrice),

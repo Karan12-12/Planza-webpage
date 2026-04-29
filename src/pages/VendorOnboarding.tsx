@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
-import { GetServiceAPI } from "../services/api";
+// import { useNavigate } from "react-router-dom";
+import { createVendorOnboarding, GetServiceAPI } from "../services/api";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -38,8 +38,14 @@ interface PortfolioEntry {
   category: string;
   subCategory: string;
   eventDate: string;
-  eventTime: string;
+  // eventTime: string; // kept for backward compat (computed as "HH:MM – HH:MM")
+  // eventTimeStart: string;
+  // eventTimeEnd: string;
+  location: string;
+  budget: string;
   brief: string;
+  thumbnail: File | null; // single cover image for the portfolio card
+  thumbnailPreviewUrl: string;
   images: File[]; // will be uploaded; backend stores URLs
   imagePreviewUrls: string[];
   videos: File[];
@@ -69,8 +75,11 @@ interface FormData {
   services: SelectedService[];
   // Step 5 – Portfolio
   portfolio: PortfolioEntry[];
-  // Meta
+  // Meta / Ratings
   CoverImageFileName: string;
+  CoverImageFile: File | null; // actual file for upload
+  CoverImagePreviewUrl: string; // local blob URL for preview
+  Rating: string;
   ReviewCount: string;
   TotalRatingCount: string;
   AverageRating: string;
@@ -79,37 +88,24 @@ interface FormData {
 // ─── Static Options ───────────────────────────────────────────────────────────
 
 const TIER_OPTIONS = ["Tier1", "Tier2", "Tier3", "Tier4"];
-const AREA_OPTIONS = [
-  "Bhopal",
-  "Indore",
-  "Jabalpur",
-  "Gwalior",
-  "Ujjain",
-  "Sagar",
-  "Dewas",
-  "Satna",
-  "Ratlam",
-  "Rewa",
-];
+// const AREA_OPTIONS = [
+//   "Bhopal",
+//   "Indore",
+//   "Jabalpur",
+//   "Gwalior",
+//   "Ujjain",
+//   "Sagar",
+//   "Dewas",
+//   "Satna",
+//   "Ratlam",
+//   "Rewa",
+// ];
 const RESPONSE_TIME_OPTIONS = [
   "Within 1 hour",
   "Within 2 hours",
   "Within 4 hours",
   "Within 12 hours",
   "Within 24 hours",
-];
-
-const EVENT_CATEGORIES = [
-  "Birthday",
-  "Proposal",
-  "Housewarming",
-  "Wedding",
-  "Anniversary",
-  "Corporate",
-  "Graduation",
-  "Baby Shower",
-  "Festive",
-  "Other",
 ];
 
 // const MOCK_SERVICES: ApiService[] = [
@@ -216,6 +212,26 @@ function Step1({
   form: FormData;
   set: (k: keyof FormData, v: any) => void;
 }) {
+  const coverInputRef = useRef<HTMLInputElement>(null);
+
+  const handleCoverImage = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const previewUrl = URL.createObjectURL(file);
+    set("CoverImageFile", file);
+    set("CoverImageFileName", file.name);
+    set("CoverImagePreviewUrl", previewUrl);
+    e.target.value = "";
+  };
+
+  const removeCover = () => {
+    if (form.CoverImagePreviewUrl)
+      URL.revokeObjectURL(form.CoverImagePreviewUrl);
+    set("CoverImageFile", null);
+    set("CoverImageFileName", "");
+    set("CoverImagePreviewUrl", "");
+  };
+
   return (
     <div className="flex flex-col gap-4">
       <div>
@@ -273,6 +289,203 @@ function Step1({
           className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:border-[#7c5cbf] focus:ring-2 focus:ring-[#7c5cbf]/10 transition resize-none"
         />
       </div>
+
+      {/* Cover Image */}
+      <div>
+        <Label>Cover Image</Label>
+        <input
+          ref={coverInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleCoverImage}
+        />
+        {form.CoverImagePreviewUrl ? (
+          <div className="relative rounded-2xl overflow-hidden border-2 border-[#7c5cbf] group">
+            <img
+              src={form.CoverImagePreviewUrl}
+              alt="Cover"
+              className="w-full h-40 object-cover"
+            />
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition" />
+            <button
+              type="button"
+              onClick={removeCover}
+              className="absolute top-2 right-2 w-7 h-7 bg-black/60 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition text-xs font-bold"
+            >
+              ✕
+            </button>
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-3 py-2">
+              <p className="text-xs text-white font-medium truncate">
+                {form.CoverImageFileName}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => coverInputRef.current?.click()}
+              className="absolute bottom-2 right-2 text-xs bg-white/90 text-gray-700 font-semibold rounded-full px-2.5 py-1 hover:bg-white transition opacity-0 group-hover:opacity-100"
+            >
+              Change
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => coverInputRef.current?.click()}
+            className="w-full border-2 border-dashed border-gray-200 rounded-2xl py-8 flex flex-col items-center gap-2 text-gray-400 hover:border-[#7c5cbf] hover:text-[#7c5cbf] transition"
+          >
+            <svg
+              width="32"
+              height="32"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+              />
+            </svg>
+            <span className="text-xs font-semibold">Upload Cover Image</span>
+            <span className="text-xs text-gray-300">
+              JPG, PNG, WEBP · Recommended 1200×600
+            </span>
+          </button>
+        )}
+      </div>
+
+      {/* Ratings & Review Stats */}
+      <div className="border border-gray-100 rounded-2xl p-4 flex flex-col gap-3 bg-gray-50/50">
+        <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+          Ratings & Reviews
+        </p>
+        <div>
+          <Label>Rating (out of 5)</Label>
+          <div className="flex items-center gap-2">
+            {/* <input
+              type="number" min="0" max="5" step="0.1"
+              value={form.Rating}
+              onChange={(e) => set("Rating", e.target.value)}
+              placeholder="e.g. 4.5"
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:border-[#7c5cbf] focus:ring-2 focus:ring-[#7c5cbf]/10 transition bg-white"
+            /> */}
+            <input
+              type="number"
+              min="0"
+              max="5"
+              step="0.1"
+              value={form.Rating}
+              onChange={(e) => {
+                const value = e.target.value;
+
+                // allow empty
+                if (value === "") {
+                  set("Rating", "");
+                  return;
+                }
+
+                const num = Number(value);
+
+                // allow only values between 0 and 5
+                if (num >= 0 && num <= 5) {
+                  set("Rating", value);
+                }
+              }}
+              onKeyDown={(e) => {
+                // block unwanted keys
+                if (["e", "E", "+", "-"].includes(e.key)) {
+                  e.preventDefault();
+                }
+              }}
+              placeholder="e.g. 4.5"
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:border-[#7c5cbf] focus:ring-2 focus:ring-[#7c5cbf]/10 transition bg-white"
+            />
+            {form.Rating && (
+              <div className="flex items-center gap-1 flex-shrink-0 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                <span className="text-amber-400 text-base">★</span>
+                <span className="text-sm font-bold text-amber-600">
+                  {Number(form.Rating).toFixed(1)}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+        {/* <div className="grid grid-cols-3 gap-3">
+          {(
+            [
+              ["ReviewCount", "Review Count", "e.g. 24"],
+              ["TotalRatingCount", "Total Ratings", "e.g. 120"],
+              ["AverageRating", "Avg Rating", "e.g. 4.5"],
+            ] as const
+          ).map(([key, label, ph]) => (
+            <div key={key}>
+              <Label>{label}</Label>
+              <input
+                type="number"
+                min="0"
+                step={key === "AverageRating" ? "0.1" : "1"}
+                value={form[key]}
+                onChange={(e) => set(key, e.target.value)}
+                placeholder={ph}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:border-[#7c5cbf] focus:ring-2 focus:ring-[#7c5cbf]/10 transition bg-white"
+              />
+            </div>
+          ))}
+        </div> */}
+        <div className="grid grid-cols-3 gap-3">
+          {(
+            [
+              ["ReviewCount", "Review Count", "e.g. 24"],
+              ["TotalRatingCount", "Total Ratings", "e.g. 120"],
+              // ["AverageRating", "Avg Rating", "e.g. 4.5"],
+            ] as const
+          ).map(([key, label, ph]) => (
+            <div key={key}>
+              <Label>{label}</Label>
+              <input
+                type="number"
+                min="0"
+                // max={key === "AverageRating" ? "5" : undefined}
+                // step={key === "AverageRating" ? "0.1" : "1"}
+                value={form[key]}
+                onChange={(e) => {
+                  const value = e.target.value;
+
+                  // allow empty
+                  if (value === "") {
+                    set(key, "");
+                    return;
+                  }
+
+                  const num = Number(value);
+
+                  // special restriction for AverageRating (0 to 5)
+                  // if (key === "AverageRating") {
+                  //   if (num >= 0 && num <= 5) {
+                  //     set(key, value);
+                  //   }
+                  //   return;
+                  // }
+
+                  // normal number fields
+                  if (num >= 0) {
+                    set(key, value);
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (["e", "E", "+", "-"].includes(e.key)) {
+                    e.preventDefault();
+                  }
+                }}
+                placeholder={ph}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:border-[#7c5cbf] focus:ring-2 focus:ring-[#7c5cbf]/10 transition bg-white"
+              />
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -288,11 +501,10 @@ function Step2({
     <div className="flex flex-col gap-4">
       <div>
         <Label required>Area Served</Label>
-        <PlanzaSelect
+        <Input
           value={form.area_served}
           onChange={(v) => set("area_served", v)}
-          options={AREA_OPTIONS}
-          placeholder="Select city"
+          placeholder="e.g. Indore, Bhopal, Ujjain"
         />
       </div>
       <div>
@@ -425,52 +637,16 @@ function Step3({
 function Step4({
   form,
   set,
+  services,
+  loadingServices,
+  fetchError,
 }: {
   form: FormData;
   set: (k: keyof FormData, v: any) => void;
+  services: ApiService[];
+  loadingServices: boolean;
+  fetchError: string | null;
 }) {
-  const [services, setServices] = useState<ApiService[]>([]);
-  const [loadingServices, setLoadingServices] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-
-  useEffect(() => {
-    (async () => {
-      setLoadingServices(true);
-      setFetchError(null);
-      try {
-        // 🔌 Replace with real API:
-        const res: any = await GetServiceAPI();
-        console.log(res);
-        if (res?.data?.Status) {
-          const mapped = res.data.Data.map((s: any) => ({
-            id: s.id,
-            name: s.name,
-            code: s.code,
-            subServices: (s.subServices || []).map(
-              (sub: any) =>
-                typeof sub === "string"
-                  ? { id: sub, name: sub, is_active: true }
-                  : {
-                      id: sub.id,
-                      name: sub.name,
-                      is_active: sub.is_active ?? true,
-                    }, // ✅ carry is_active
-            ),
-            status: s.is_active ? "active" : "inactive",
-          }));
-
-          console.log(mapped, "mapped services");
-          // setServices(MOCK_SERVICES.filter((s) => s.status === "active"));
-          setServices(mapped);
-        }
-      } catch {
-        setFetchError("Failed to load services. Please try again.");
-      } finally {
-        setLoadingServices(false);
-      }
-    })();
-  }, []);
-
   const isSubSelected = (svcId: string, subId: string) =>
     form.services.some(
       (s) => s.service_id === svcId && s.subcategory_id === subId,
@@ -701,8 +877,14 @@ function newEntry(): PortfolioEntry {
     category: "",
     subCategory: "",
     eventDate: "",
-    eventTime: "",
+    // eventTime: "",
+    // eventTimeStart: "",
+    // eventTimeEnd: "",
+    location: "",
+    budget: "",
     brief: "",
+    thumbnail: null,
+    thumbnailPreviewUrl: "",
     images: [],
     imagePreviewUrls: [],
     videos: [],
@@ -716,19 +898,41 @@ function PortfolioEntryCard({
   total,
   onChange,
   onRemove,
+  services,
 }: {
   entry: PortfolioEntry;
   index: number;
   total: number;
   onChange: (updated: PortfolioEntry) => void;
   onRemove: () => void;
+  services: ApiService[];
 }) {
   const [expanded, setExpanded] = useState(true);
   const imgInputRef = useRef<HTMLInputElement>(null);
   const vidInputRef = useRef<HTMLInputElement>(null);
+  const thumbInputRef = useRef<HTMLInputElement>(null);
 
   const update = (k: keyof PortfolioEntry, v: any) =>
     onChange({ ...entry, [k]: v });
+
+  const handleThumbnail = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (entry.thumbnailPreviewUrl)
+      URL.revokeObjectURL(entry.thumbnailPreviewUrl);
+    onChange({
+      ...entry,
+      thumbnail: file,
+      thumbnailPreviewUrl: URL.createObjectURL(file),
+    });
+    e.target.value = "";
+  };
+
+  const removeThumbnail = () => {
+    if (entry.thumbnailPreviewUrl)
+      URL.revokeObjectURL(entry.thumbnailPreviewUrl);
+    onChange({ ...entry, thumbnail: null, thumbnailPreviewUrl: "" });
+  };
 
   const handleImages = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -772,6 +976,15 @@ function PortfolioEntryCard({
 
   const isComplete = entry.title && entry.category && entry.eventDate;
 
+  // Resolve display names from IDs for the card header
+  const categoryName =
+    services.find((s) => s.id === entry.category)?.name ?? entry.category;
+  const subCategoryName =
+    services
+      .find((s) => s.id === entry.category)
+      ?.subServices.find((sub) => sub.id === entry.subCategory)?.name ??
+    entry.subCategory;
+
   return (
     <div
       className={`border-2 rounded-2xl overflow-hidden transition-all duration-200 ${isComplete ? "border-[#7c5cbf]" : "border-gray-200"}`}
@@ -782,9 +995,21 @@ function PortfolioEntryCard({
         onClick={() => setExpanded((e) => !e)}
       >
         <div
-          className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${isComplete ? "bg-[#7c5cbf] text-white" : "bg-gray-200 text-gray-500"}`}
+          className={`w-10 h-10 rounded-xl overflow-hidden flex-shrink-0 border-2 ${isComplete ? "border-[#7c5cbf]" : "border-gray-200"}`}
         >
-          {isComplete ? "✓" : index + 1}
+          {entry.thumbnailPreviewUrl ? (
+            <img
+              src={entry.thumbnailPreviewUrl}
+              alt=""
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div
+              className={`w-full h-full flex items-center justify-center text-sm font-bold ${isComplete ? "bg-[#7c5cbf] text-white" : "bg-gray-200 text-gray-500"}`}
+            >
+              {isComplete ? "✓" : index + 1}
+            </div>
+          )}
         </div>
         <div className="flex-1 min-w-0">
           <p
@@ -793,9 +1018,10 @@ function PortfolioEntryCard({
             {entry.title || `Event ${index + 1}`}
           </p>
           {entry.category && (
-            <p className="text-xs text-gray-400">
-              {entry.category}
-              {entry.subCategory ? ` · ${entry.subCategory}` : ""}
+            <p className="text-xs text-gray-400 truncate">
+              {categoryName}
+              {subCategoryName ? ` · ${subCategoryName}` : ""}
+              {entry.location ? ` · 📍${entry.location}` : ""}
               {entry.eventDate ? ` · ${entry.eventDate}` : ""}
             </p>
           )}
@@ -868,54 +1094,246 @@ function PortfolioEntryCard({
             />
           </div>
 
-          {/* Category + SubCategory */}
+          {/* Category + SubCategory — driven by same API as Step 4 */}
+          {(() => {
+            const activeServices = services.filter(
+              (s) => s.status === "active",
+            );
+            const selectedSvc = activeServices.find(
+              (s) => s.id === entry.category,
+            );
+            const activeSubs = selectedSvc
+              ? selectedSvc.subServices.filter((s) => s.is_active)
+              : [];
+            return (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label required>Category</Label>
+                  <select
+                    value={entry.category}
+                    onChange={(e) =>
+                      onChange({
+                        ...entry,
+                        category: e.target.value,
+                        subCategory: "",
+                      })
+                    }
+                    className="w-full border border-gray-200 rounded-xl px-3 py-3 text-sm text-gray-800 focus:outline-none focus:border-[#7c5cbf] focus:ring-2 focus:ring-[#7c5cbf]/10 transition bg-white"
+                  >
+                    <option value="">Select</option>
+                    {activeServices.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <Label>Sub-Category</Label>
+                  <select
+                    value={entry.subCategory}
+                    onChange={(e) => update("subCategory", e.target.value)}
+                    disabled={!entry.category || activeSubs.length === 0}
+                    className={`w-full border rounded-xl px-3 py-3 text-sm focus:outline-none focus:border-[#7c5cbf] focus:ring-2 focus:ring-[#7c5cbf]/10 transition bg-white ${
+                      !entry.category || activeSubs.length === 0
+                        ? "border-gray-100 text-gray-300 bg-gray-50 cursor-not-allowed"
+                        : "border-gray-200 text-gray-800"
+                    }`}
+                  >
+                    <option value="">
+                      {!entry.category
+                        ? "Pick category first"
+                        : activeSubs.length === 0
+                          ? "No sub-services"
+                          : "Select"}
+                    </option>
+                    {activeSubs.map((sub) => (
+                      <option key={sub.id} value={sub.id}>
+                        {sub.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Event Date + Time Range */}
+          <div>
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div>
+                <Label required>Event Date</Label>
+                <input
+                  type="date"
+                  value={entry.eventDate}
+                  onChange={(e) => update("eventDate", e.target.value)}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-3 text-sm text-gray-800 focus:outline-none focus:border-[#7c5cbf] focus:ring-2 focus:ring-[#7c5cbf]/10 transition"
+                />
+              </div>
+            </div>
+            {/* <div>
+              <Label>Event Time</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-xs text-gray-400 mb-1">Start Time</p>
+                  <input
+                    type="time"
+                    value={entry.eventTimeStart}
+                    onChange={(e) => {
+                      const start = e.target.value;
+                      const combined =
+                        start && entry.eventTimeEnd
+                          ? `${start} – ${entry.eventTimeEnd}`
+                          : start || entry.eventTimeEnd || "";
+                      onChange({
+                        ...entry,
+                        eventTimeStart: start,
+                        eventTime: combined,
+                      });
+                    }}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-3 text-sm text-gray-800 focus:outline-none focus:border-[#7c5cbf] focus:ring-2 focus:ring-[#7c5cbf]/10 transition"
+                  />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 mb-1">End Time</p>
+                  <input
+                    type="time"
+                    value={entry.eventTimeEnd}
+                    onChange={(e) => {
+                      const end = e.target.value;
+                      const combined =
+                        entry.eventTimeStart && end
+                          ? `${entry.eventTimeStart} – ${end}`
+                          : entry.eventTimeStart || end || "";
+                      onChange({
+                        ...entry,
+                        eventTimeEnd: end,
+                        eventTime: combined,
+                      });
+                    }}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-3 text-sm text-gray-800 focus:outline-none focus:border-[#7c5cbf] focus:ring-2 focus:ring-[#7c5cbf]/10 transition"
+                  />
+                </div>
+              </div>
+              {entry.eventTimeStart && entry.eventTimeEnd && (
+                <p className="text-xs text-[#7c5cbf] font-medium mt-1.5">
+                  🕐 {entry.eventTimeStart} – {entry.eventTimeEnd}
+                </p>
+              )}
+            </div> */}
+          </div>
+
+          {/* Location + Budget */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label required>Category</Label>
-              <select
-                value={entry.category}
-                onChange={(e) => update("category", e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-3 py-3 text-sm text-gray-800 focus:outline-none focus:border-[#7c5cbf] focus:ring-2 focus:ring-[#7c5cbf]/10 transition bg-white"
-              >
-                <option value="">Select</option>
-                {EVENT_CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
+              <Label>Location</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                  <svg
+                    width="14"
+                    height="14"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
+                  </svg>
+                </span>
+                <input
+                  value={entry.location}
+                  onChange={(e) => update("location", e.target.value)}
+                  placeholder="e.g. Indore"
+                  className="w-full border border-gray-200 rounded-xl pl-8 pr-3 py-3 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:border-[#7c5cbf] focus:ring-2 focus:ring-[#7c5cbf]/10 transition"
+                />
+              </div>
             </div>
             <div>
-              <Label>Sub-Category</Label>
-              <input
-                value={entry.subCategory}
-                onChange={(e) => update("subCategory", e.target.value)}
-                placeholder="e.g. Surprise Party"
-                className="w-full border border-gray-200 rounded-xl px-3 py-3 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:border-[#7c5cbf] focus:ring-2 focus:ring-[#7c5cbf]/10 transition"
-              />
+              <Label>Budget (₹)</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+                  ₹
+                </span>
+                <input
+                  type="number"
+                  value={entry.budget}
+                  onChange={(e) => update("budget", e.target.value)}
+                  placeholder="e.g. 50000"
+                  className="w-full border border-gray-200 rounded-xl pl-7 pr-3 py-3 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:border-[#7c5cbf] focus:ring-2 focus:ring-[#7c5cbf]/10 transition"
+                />
+              </div>
             </div>
           </div>
 
-          {/* Event Date + Time */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label required>Event Date</Label>
-              <input
-                type="date"
-                value={entry.eventDate}
-                onChange={(e) => update("eventDate", e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-3 py-3 text-sm text-gray-800 focus:outline-none focus:border-[#7c5cbf] focus:ring-2 focus:ring-[#7c5cbf]/10 transition"
-              />
-            </div>
-            <div>
-              <Label>Event Time</Label>
-              <input
-                value={entry.eventTime}
-                onChange={(e) => update("eventTime", e.target.value)}
-                placeholder="e.g. 7:00 PM – 11:00 PM"
-                className="w-full border border-gray-200 rounded-xl px-3 py-3 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:border-[#7c5cbf] focus:ring-2 focus:ring-[#7c5cbf]/10 transition"
-              />
-            </div>
+          {/* Thumbnail */}
+          <div>
+            <Label>Thumbnail</Label>
+            <p className="text-xs text-gray-400 mb-2">
+              This image will be used as the portfolio card cover.
+            </p>
+            <input
+              ref={thumbInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleThumbnail}
+            />
+            {entry.thumbnailPreviewUrl ? (
+              <div className="relative rounded-xl overflow-hidden border-2 border-[#7c5cbf] group">
+                <img
+                  src={entry.thumbnailPreviewUrl}
+                  alt="Thumbnail"
+                  className="w-full h-32 object-cover"
+                />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition" />
+                <button
+                  type="button"
+                  onClick={removeThumbnail}
+                  className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/60 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition text-xs font-bold"
+                >
+                  ✕
+                </button>
+                <button
+                  type="button"
+                  onClick={() => thumbInputRef.current?.click()}
+                  className="absolute bottom-1.5 right-1.5 text-xs bg-white/90 text-gray-700 font-semibold rounded-full px-2.5 py-1 hover:bg-white transition opacity-0 group-hover:opacity-100"
+                >
+                  Change
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => thumbInputRef.current?.click()}
+                className="w-full border-2 border-dashed border-gray-200 rounded-xl py-5 flex flex-col items-center gap-1.5 text-gray-400 hover:border-[#7c5cbf] hover:text-[#7c5cbf] transition"
+              >
+                <svg
+                  width="24"
+                  height="24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  />
+                </svg>
+                <span className="text-xs font-medium">Upload Thumbnail</span>
+                <span className="text-xs text-gray-300">JPG, PNG, WEBP</span>
+              </button>
+            )}
           </div>
 
           {/* Brief */}
@@ -1125,9 +1543,15 @@ function PortfolioEntryCard({
 function Step5Portfolio({
   form,
   set,
+  services,
+  loadingServices,
+  fetchError,
 }: {
   form: FormData;
   set: (k: keyof FormData, v: any) => void;
+  services: ApiService[];
+  loadingServices: boolean;
+  fetchError: string | null;
 }) {
   const addEntry = () => {
     set("portfolio", [...form.portfolio, newEntry()]);
@@ -1150,6 +1574,28 @@ function Step5Portfolio({
   const completedCount = form.portfolio.filter(
     (e) => e.title && e.category && e.eventDate,
   ).length;
+
+  if (loadingServices)
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-3">
+        <div className="w-8 h-8 rounded-full border-4 border-[#7c5cbf]/20 border-t-[#7c5cbf] animate-spin" />
+        <p className="text-sm text-gray-400">Loading categories...</p>
+      </div>
+    );
+
+  if (fetchError)
+    return (
+      <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
+        <p className="text-3xl">⚠️</p>
+        <p className="text-sm text-gray-600 font-semibold">{fetchError}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="text-xs text-[#7c5cbf] font-semibold underline"
+        >
+          Retry
+        </button>
+      </div>
+    );
 
   return (
     <div className="flex flex-col gap-4">
@@ -1188,6 +1634,7 @@ function Step5Portfolio({
           entry={entry}
           index={i}
           total={form.portfolio.length}
+          services={services}
           onChange={(updated) => updateEntry(entry._localId, updated)}
           onRemove={() => removeEntry(entry._localId)}
         />
@@ -1239,7 +1686,19 @@ function ReviewRow({ label, value }: { label: string; value?: string }) {
   );
 }
 
-function Step6Review({ form }: { form: FormData }) {
+function Step6Review({
+  form,
+  services,
+}: {
+  form: FormData;
+  services: ApiService[];
+}) {
+  // Helper: resolve service name from ID
+  const svcName = (id: string) => services.find((s) => s.id === id)?.name ?? id;
+  const subName = (svcId: string, subId: string) =>
+    services
+      .find((s) => s.id === svcId)
+      ?.subServices.find((sub) => sub.id === subId)?.name ?? subId;
   return (
     <div className="flex flex-col gap-4">
       <p className="text-xs text-gray-400">
@@ -1250,6 +1709,15 @@ function Step6Review({ form }: { form: FormData }) {
         <p className="text-xs font-bold text-[#7c5cbf] uppercase tracking-wide mb-3">
           👤 Basic Info
         </p>
+        {form.CoverImagePreviewUrl && (
+          <div className="mb-3 rounded-xl overflow-hidden border border-gray-200">
+            <img
+              src={form.CoverImagePreviewUrl}
+              alt="Cover"
+              className="w-full h-28 object-cover"
+            />
+          </div>
+        )}
         <ReviewRow label="Name" value={form.name} />
         <ReviewRow label="Mobile" value={`+91 ${form.MobileNumber}`} />
         <ReviewRow label="Type" value={form.FreeLancerOrCompany} />
@@ -1262,6 +1730,26 @@ function Step6Review({ form }: { form: FormData }) {
                 (form.description.length > 80 ? "…" : "")
               : undefined
           }
+        />
+        <ReviewRow
+          label="Rating"
+          value={
+            form.Rating ? `★ ${Number(form.Rating).toFixed(1)} / 5` : undefined
+          }
+        />
+        <ReviewRow
+          label="Review Count"
+          value={form.ReviewCount !== "0" ? form.ReviewCount : undefined}
+        />
+        <ReviewRow
+          label="Total Ratings"
+          value={
+            form.TotalRatingCount !== "0" ? form.TotalRatingCount : undefined
+          }
+        />
+        <ReviewRow
+          label="Average Rating"
+          value={form.AverageRating !== "0" ? form.AverageRating : undefined}
         />
       </div>
 
@@ -1318,7 +1806,8 @@ function Step6Review({ form }: { form: FormData }) {
                 key={i}
                 className="text-xs bg-[#f9f5ff] text-[#7c5cbf] border border-[#e8d9ff] rounded-full px-3 py-1 font-medium"
               >
-                {s.service_id} · {s.subcategory_id}
+                {svcName(s.service_id)} ·{" "}
+                {subName(s.service_id, s.subcategory_id)}
               </span>
             ))}
           </div>
@@ -1341,8 +1830,14 @@ function Step6Review({ form }: { form: FormData }) {
                 className="flex items-start gap-3 py-2 border-b border-gray-100 last:border-0"
               >
                 {/* Thumbnail or placeholder */}
-                <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 border border-gray-200">
-                  {entry.imagePreviewUrls[0] ? (
+                <div className="w-14 h-14 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 border border-gray-200">
+                  {entry.thumbnailPreviewUrl ? (
+                    <img
+                      src={entry.thumbnailPreviewUrl}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
+                  ) : entry.imagePreviewUrls[0] ? (
                     <img
                       src={entry.imagePreviewUrls[0]}
                       alt=""
@@ -1358,13 +1853,28 @@ function Step6Review({ form }: { form: FormData }) {
                   <p className="text-xs font-bold text-gray-800 truncate">
                     {entry.title || `Event ${i + 1}`}
                   </p>
-                  <p className="text-xs text-gray-400">
-                    {[entry.category, entry.subCategory]
+                  <p className="text-xs text-gray-400 truncate">
+                    {[
+                      entry.category ? svcName(entry.category) : "",
+                      entry.subCategory
+                        ? subName(entry.category, entry.subCategory)
+                        : "",
+                    ]
                       .filter(Boolean)
                       .join(" · ")}
                     {entry.eventDate ? ` · ${entry.eventDate}` : ""}
                   </p>
-                  <div className="flex gap-2 mt-1">
+                  <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
+                    {entry.location && (
+                      <span className="text-xs text-gray-400">
+                        📍 {entry.location}
+                      </span>
+                    )}
+                    {entry.budget && (
+                      <span className="text-xs text-gray-400">
+                        ₹ {Number(entry.budget).toLocaleString("en-IN")}
+                      </span>
+                    )}
                     {entry.images.length > 0 && (
                       <span className="text-xs text-gray-400">
                         📷 {entry.images.length}
@@ -1444,18 +1954,58 @@ const INITIAL_FORM: FormData = {
   services: [],
   portfolio: [],
   CoverImageFileName: "",
+  CoverImageFile: null,
+  CoverImagePreviewUrl: "",
+  Rating: "",
   ReviewCount: "0",
   TotalRatingCount: "0",
   AverageRating: "0",
 };
 
 export default function VendorOnboarding() {
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<FormData>(INITIAL_FORM);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+
+  // Shared services list used by both Step 4 and Step 5 Portfolio
+  const [services, setServices] = useState<ApiService[]>([]);
+  const [loadingServices, setLoadingServices] = useState(true);
+  const [servicesError, setServicesError] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      setLoadingServices(true);
+      setServicesError(null);
+      try {
+        const res: any = await GetServiceAPI();
+        if (res?.data?.Status) {
+          const mapped: ApiService[] = res.data.Data.map((s: any) => ({
+            id: s.id,
+            name: s.name,
+            code: s.code,
+            subServices: (s.subServices || []).map((sub: any) =>
+              typeof sub === "string"
+                ? { id: sub, name: sub, is_active: true }
+                : {
+                    id: sub.id,
+                    name: sub.name,
+                    is_active: sub.is_active ?? true,
+                  },
+            ),
+            status: s.is_active ? "active" : "inactive",
+          }));
+          setServices(mapped);
+        }
+      } catch {
+        setServicesError("Failed to load services. Please try again.");
+      } finally {
+        setLoadingServices(false);
+      }
+    })();
+  }, []);
 
   const set = (k: keyof FormData, v: any) => {
     setForm((f) => ({ ...f, [k]: v }));
@@ -1496,6 +2046,7 @@ export default function VendorOnboarding() {
         InstagramHandle: form.InstagramHandle,
         FacebookHandle: form.FacebookHandle,
         ResponseTime: form.ResponseTime,
+        Rating: Number(form.Rating) || 0,
         ReviewCount: Number(form.ReviewCount),
         TotalRatingCount: Number(form.TotalRatingCount),
         AverageRating: Number(form.AverageRating),
@@ -1510,36 +2061,59 @@ export default function VendorOnboarding() {
           category: e.category,
           subCategory: e.subCategory,
           eventDate: e.eventDate,
-          eventTime: e.eventTime,
+          // eventTime: e.eventTime,
+          location: e.location,
+          budget: Number(e.budget) || 0,
           brief: e.brief,
           imageCount: e.images.length,
           videoCount: e.videos.length,
+          hasThumbnail: !!e.thumbnail,
         })),
       };
 
+      console.log("data", jsonData);
+
       formPayload.append("data", JSON.stringify(jsonData));
 
-      // Append image & video files keyed by portfolio index
+      if (form.CoverImageFile) {
+        formPayload.append("Cover_images", form.CoverImageFile);
+      }
+
+      // // Append image & video files keyed by portfolio index
       form.portfolio.forEach((entry, idx) => {
         entry.images.forEach((file) =>
           formPayload.append(`portfolio_${idx}_images`, file),
         );
+
+        if (entry.thumbnail) {
+          formPayload.append("portfolio_thumbnail_images", entry.thumbnail);
+        }
         entry.videos.forEach((file) =>
           formPayload.append(`portfolio_${idx}_videos`, file),
         );
       });
 
-      const res = await fetch("/api/vendor/onboard", {
-        method: "POST",
-        body: formPayload, // no Content-Type header — browser sets multipart boundary
-      });
+      console.log("file", form);
 
-      const data = await res.json();
-      if (!res.ok || data.Status === 0)
-        throw new Error(data.Message || "Something went wrong");
-      setSubmitted(true);
+      const res: any = await createVendorOnboarding(formPayload);
+
+      console.log(res);
+
+      // const res = await fetch("/api/vendor/onboard", {
+      //   method: "POST",
+      //   body: formPayload, // no Content-Type header — browser sets multipart boundary
+      // });
+
+      // const data = await res.json();
+      // if (!res.ok || data.Status === 0)
+      //   throw new Error(data.Message || "Something went wrong");
+      // setSubmitted(true);
+      if (res.Status == 1) {
+        setSubmitted(true);
+      }
     } catch (err: any) {
       setError(err.message || "Failed to submit. Please try again.");
+      console.log(err);
     } finally {
       setLoading(false);
     }
@@ -1577,9 +2151,9 @@ export default function VendorOnboarding() {
           <p className="text-gray-400 text-xs mb-8">
             Our team will review and call you on{" "}
             <span className="font-semibold">+91 {form.MobileNumber}</span>{" "}
-            within 24–48 hours.
+            {/* within 24–48 hours. */}
           </p>
-          <div className="bg-white rounded-2xl border border-gray-100 p-4 text-left mb-6">
+          {/* <div className="bg-white rounded-2xl border border-gray-100 p-4 text-left mb-6">
             <p className="text-xs text-gray-400 mb-2 font-semibold uppercase tracking-wide">
               What happens next?
             </p>
@@ -1595,13 +2169,13 @@ export default function VendorOnboarding() {
                 <p className="text-xs text-gray-600">{t}</p>
               </div>
             ))}
-          </div>
-          <button
+          </div> */}
+          {/* <button
             onClick={() => navigate("/")}
             className="w-full bg-gradient-to-r from-[#7c5cbf] to-[#e84393] text-white font-bold py-4 rounded-2xl hover:opacity-90 transition shadow-lg"
           >
             Back to Home
-          </button>
+          </button> */}
         </div>
       </div>
     );
@@ -1686,9 +2260,25 @@ export default function VendorOnboarding() {
           {step === 1 && <Step1 form={form} set={set} />}
           {step === 2 && <Step2 form={form} set={set} />}
           {step === 3 && <Step3 form={form} set={set} />}
-          {step === 4 && <Step4 form={form} set={set} />}
-          {step === 5 && <Step5Portfolio form={form} set={set} />}
-          {step === 6 && <Step6Review form={form} />}
+          {step === 4 && (
+            <Step4
+              form={form}
+              set={set}
+              services={services}
+              loadingServices={loadingServices}
+              fetchError={servicesError}
+            />
+          )}
+          {step === 5 && (
+            <Step5Portfolio
+              form={form}
+              set={set}
+              services={services}
+              loadingServices={loadingServices}
+              fetchError={servicesError}
+            />
+          )}
+          {step === 6 && <Step6Review form={form} services={services} />}
         </div>
       </div>
 

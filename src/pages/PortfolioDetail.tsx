@@ -35,13 +35,13 @@ interface PortfolioEntry {
 function fileUrl(filename: string | null | undefined): string | null {
   if (!filename) return null;
   if (filename.startsWith("http")) return filename;
-  return `${UPLOADS_BASE_URL}/src/uploads/vendor/portfolio/images/${filename}`;
+  return `${UPLOADS_BASE_URL}/uploads/vendor/portfolio/images/${filename}`;
 }
 
 function fileUrlForVideo(filename: string | null | undefined): string | null {
   if (!filename) return null;
   if (filename.startsWith("http")) return filename;
-  return `${UPLOADS_BASE_URL}/src/uploads/vendor/portfolio/videos/${filename}`;
+  return `${UPLOADS_BASE_URL}/uploads/vendor/portfolio/videos/${filename}`;
 }
 
 function formatDate(iso: string): string {
