@@ -201,7 +201,7 @@ function Step1({
     set("existingCoverImageUrl", "");
   };
 
-  const displayCoverUrl = form.existingCoverImageUrl;
+  const displayCoverUrl = form.CoverImagePreviewUrl || form.existingCoverImageUrl;
 
   console.log(displayCoverUrl, "cover image url");
 
@@ -926,14 +926,18 @@ function PortfolioEntryCard({
   const removeExistingImage = (i: number) => {
     onChange({
       ...entry,
-      existingImageUrls: (entry.existingImageUrls || []).filter((_, idx) => idx !== i),
+      existingImageUrls: (entry.existingImageUrls || []).filter(
+        (_, idx) => idx !== i,
+      ),
     });
   };
 
   const removeExistingVideo = (i: number) => {
     onChange({
       ...entry,
-      existingVideoUrls: (entry.existingVideoUrls || []).filter((_, idx) => idx !== i),
+      existingVideoUrls: (entry.existingVideoUrls || []).filter(
+        (_, idx) => idx !== i,
+      ),
     });
   };
 
@@ -1079,6 +1083,7 @@ function PortfolioEntryCard({
           />
           {entry.thumbnailPreviewUrl || entry.existingThumbnailUrl ? (
             <div className="relative rounded-xl overflow-hidden border-2 border-[#7c5cbf] h-28 group">
+            
               <img
                 src={entry.thumbnailPreviewUrl || entry.existingThumbnailUrl}
                 alt="Thumbnail"
@@ -1097,13 +1102,13 @@ function PortfolioEntryCard({
               >
                 ✕
               </button>
-              <button
+              {/* <button
                 type="button"
                 onClick={() => thumbnailInputRef.current?.click()}
                 className="absolute bottom-1.5 right-1.5 text-xs bg-white/90 text-gray-700 font-semibold rounded-full px-2 py-0.5 opacity-0 group-hover:opacity-100 transition"
               >
                 Change
-              </button>
+              </button> */}
             </div>
           ) : (
             <button
@@ -1723,7 +1728,7 @@ export default function VendorUpdate() {
       const formPayload = new FormData();
 
       const jsonData = {
-        MobileNumber:form.MobileNumber,
+        MobileNumber: form.MobileNumber,
         name: form.name,
         area_served: form.area_served,
         FromPrice: Number(form.FromPrice),
@@ -1774,7 +1779,7 @@ export default function VendorUpdate() {
         );
         // Fix: use per-entry field name so each portfolio entry has its own thumbnail
         if (entry.thumbnail)
-          formPayload.append(`portfolio_${idx}_thumbnail_images`, entry.thumbnail);
+          formPayload.append(`portfolio_${idx}_thumbnail`, entry.thumbnail);
         entry.videos.forEach((file) =>
           formPayload.append(`portfolio_${idx}_videos`, file),
         );
