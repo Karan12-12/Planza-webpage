@@ -1692,6 +1692,10 @@ export default function VendorUpdate() {
     })();
   }, [vendorId]);
 
+  useEffect(()=>{
+   console.log(form)
+  },[form])
+
   const set = (k: keyof FormData, v: any) => {
     setFormState((f) => ({ ...f, [k]: v }));
     setError(null);
