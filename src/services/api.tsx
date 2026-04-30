@@ -66,3 +66,29 @@ export const updateVendorAPI = async (
 
 
 
+export const getUserbyIDAPI = async (
+  id: string,
+): Promise<AxiosResponse | unknown> => {
+  try {
+    const response = await api.get(`/user/getUserByIdWithoutToken/${id}`);
+
+    return response.data;
+  } catch (error) {
+      const err = error as AxiosError<any>;
+    return err?.response?.data;
+  }
+};
+
+export const submitQueAPI = async (
+  payload:any
+): Promise<AxiosResponse | unknown> => {
+  try {
+    const response = await api.post(`/findVendor/askQuestion`,payload);
+
+    return response.data;
+  } catch (error) {
+      const err = error as AxiosError<any>;
+    return err?.response?.data;
+  }
+};
+
