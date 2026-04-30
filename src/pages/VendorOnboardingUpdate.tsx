@@ -867,15 +867,34 @@ function PortfolioEntryCard({
   const upd = (k: keyof PortfolioEntry, v: any) =>
     onChange({ ...entry, [k]: v });
 
+  // const handleThumbnail = (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   const file = e.target.files?.[0];
+  //   if (!file) return;
+  //   if (entry.thumbnailPreviewUrl)
+  //     URL.revokeObjectURL(entry.thumbnailPreviewUrl);
+  //   upd("thumbnail", file);
+  //   upd("thumbnailPreviewUrl", URL.createObjectURL(file));
+  //   e.target.value = "";
+  // };
+
   const handleThumbnail = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (entry.thumbnailPreviewUrl)
-      URL.revokeObjectURL(entry.thumbnailPreviewUrl);
-    upd("thumbnail", file);
-    upd("thumbnailPreviewUrl", URL.createObjectURL(file));
-    e.target.value = "";
-  };
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  if (entry.thumbnailPreviewUrl) {
+    URL.revokeObjectURL(entry.thumbnailPreviewUrl);
+  }
+
+  const previewUrl = URL.createObjectURL(file);
+
+  onChange({
+    ...entry,
+    thumbnail: file,
+    thumbnailPreviewUrl: previewUrl,
+  });
+
+  e.target.value = "";
+};
 
   const handleImages = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -1772,6 +1791,8 @@ export default function VendorUpdate() {
       if (form.CoverImageFile) {
         formPayload.append("Cover_images", form.CoverImageFile);
       }
+
+      console.log(form.portfolio,"portfoliooo")
 
       form.portfolio.forEach((entry, idx) => {
         entry.images.forEach((file) =>
