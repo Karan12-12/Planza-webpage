@@ -92,3 +92,16 @@ export const submitQueAPI = async (
   }
 };
 
+export const getVenderById = async (
+  id:any
+): Promise<AxiosResponse | unknown> => {
+  try {
+    const response = await api.get(`/adminVendor/getVendorByIdWithoutToken/${id}`);
+
+    return response.data;
+  } catch (error) {
+      const err = error as AxiosError<any>;
+    return err?.response?.data;
+  }
+};
+

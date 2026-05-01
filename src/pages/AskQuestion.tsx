@@ -1,106 +1,74 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { getUserbyIDAPI, submitQueAPI } from "../services/api";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-// interface AskQuestionPayload {
-//   UserID: string;
-//   VendorID: string;
-//   LeadID: string;
-//   Question: string;
-// }
-
-// interface ApiResponse {
-//   Status: number;
-//   Message: string;
-//   Data?: {
-//     userName?: string;
-//     userPhone?: string;
-//   };
-// }
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-// async function submitQuestion(
-//   payload: AskQuestionPayload,
-// ): Promise<ApiResponse> {
-//   const res = await fetch("/api/ask-question", {
-//     method: "POST",
-//     headers: { "Content-Type": "application/json" },
-//     body: JSON.stringify(payload),
-//   });
-
-//   if (!res.ok) {
-//     const err = await res.json().catch(() => ({}));
-//     throw new Error(err?.Message || `Request failed: ${res.status}`);
-//   }
-
-//   return res.json();
-// }
+import { getUserbyIDAPI, getVenderById, submitQueAPI } from "../services/api";
 
 interface CurrentUser {
   name: string;
   MobileNumber: string;
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
 export default function AskQuestion() {
   const navigate = useNavigate();
 
-  // Pull IDs from route params — adjust names to match your router setup.
-  // e.g. /vendor/:vendorId/lead/:leadId/ask
   const [searchParams] = useSearchParams();
-
   const vendorId = searchParams.get("vendorId") || "";
-  const leadId = searchParams.get("lead"); // because URL has ?lead=
+  const leadId = searchParams.get("lead") || "";
   const userId = searchParams.get("userId") || "";
 
-  console.log(vendorId, leadId, userId);
-
-  // TODO: replace with real auth context / user hook
-  // const currentUser = {
-  //   id: "USER_ID_FROM_AUTH",
-  //   name: "Karan Yadav",
-  //   phone: "91XXXXXXXXXX", // E.164 format without '+'
-  // };
-
-  const vendorName = "Celebrations by Aryan"; // TODO: pass via props or fetch
-
   const [question, setQuestion] = useState("");
+  const [userName, setUserName] = useState("");
+  const [nameError, setNameError] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [currentUser, setCurrentUser] = useState<CurrentUser>({
-  name: "",
-  MobileNumber: "",
-});
+    name: "",
+    MobileNumber: "",
+  });
+
+  const [vendor, setVendor] = useState({
+    name: "",
+    ResponseTime: "",
+  });
 
   useEffect(() => {
     fetchUser();
+    fetchVender();
   }, []);
 
   const fetchUser = async () => {
     try {
       let res: any = await getUserbyIDAPI(userId);
-      console.log(res);
       if (res.Status) {
         setCurrentUser(res.Data);
+        // Pre-fill the editable name with whatever the API returns
+        setUserName(res.Data.name || "");
       }
     } catch (error) {}
   };
 
-  // ─── Submit ─────────────────────────────────────────────────────────────────
+  const fetchVender = async () => {
+    try {
+      let res: any = await getVenderById(vendorId);
+      if (res.Status) {
+        setVendor(res.Data);
+      }
+    } catch (error) {}
+  };
 
   const handleSubmit = async () => {
+    // Name is required — validate before anything else
+    if (!userName.trim()) {
+      setNameError(true);
+      return;
+    }
+    setNameError(false);
+
     if (!question.trim()) return;
 
     if (!vendorId || !leadId) {
-      setError(
-        "Missing vendor or lead information. Please go back and try again.",
-      );
+      setError("Missing vendor or lead information. Please go back and try again.");
       return;
     }
 
@@ -114,6 +82,7 @@ export default function AskQuestion() {
         LeadID: leadId,
         Question: question.trim(),
         Phone: currentUser.MobileNumber,
+        UserName: userName.trim(),
       });
       console.log(res);
       setSubmitted(true);
@@ -124,7 +93,7 @@ export default function AskQuestion() {
     }
   };
 
-  // ─── Render ─────────────────────────────────────────────────────────────────
+  const canSubmit = userName.trim() && question.trim() && !loading;
 
   return (
     <div className="min-h-screen bg-[#faf8f5] font-sans">
@@ -134,19 +103,8 @@ export default function AskQuestion() {
           onClick={() => navigate(-1)}
           className="text-gray-600 hover:text-gray-900 transition"
         >
-          <svg
-            width="22"
-            height="22"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M15 19l-7-7 7-7"
-            />
+          <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
         </button>
         <div>
@@ -161,27 +119,48 @@ export default function AskQuestion() {
             {/* Vendor Card */}
             <div className="flex items-center gap-3 bg-white rounded-2xl shadow-sm p-4 mb-6">
               <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#7c5cbf] to-[#e84393] flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
-                C
+                {vendor.name?.[0]?.toUpperCase() || "V"}
               </div>
               <div>
                 <p className="text-xs text-gray-400">You're asking</p>
-                <p className="text-sm font-bold text-gray-900">{vendorName}</p>
+                <p className="text-sm font-bold text-gray-900">{vendor.name}</p>
                 <p className="text-xs text-emerald-600 font-medium">
-                  ⚡ Typically responds in ~2 hrs
+                  ⚡ Typically responds {vendor.ResponseTime}
                 </p>
               </div>
             </div>
 
             {/* Form */}
             <div className="bg-white rounded-2xl shadow-sm p-5 flex flex-col gap-5">
-              {/* User Name (read-only) */}
+
+              {/* Your Name — always editable, pre-filled from API */}
               <div>
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                  Your Name
+                  Your Name <span className="text-pink-500">*</span>
                 </label>
-                <div className="w-full border border-gray-100 bg-gray-50 rounded-xl px-4 py-3 text-sm text-gray-400 font-medium">
-                  {currentUser.name}
-                </div>
+                <input
+                  type="text"
+                  placeholder="Enter your name"
+                  value={userName}
+                  onChange={(e) => {
+                    setUserName(e.target.value);
+                    if (nameError && e.target.value.trim()) setNameError(false);
+                  }}
+                  disabled={loading}
+                  className={`w-full border rounded-xl px-4 py-3 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:ring-2 transition disabled:opacity-60 ${
+                    nameError
+                      ? "border-red-300 focus:border-red-400 focus:ring-red-100 bg-red-50"
+                      : "border-gray-200 focus:border-[#7c5cbf] focus:ring-[#7c5cbf]/10"
+                  }`}
+                />
+                {nameError && (
+                  <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                    </svg>
+                    Please enter your name to continue
+                  </p>
+                )}
               </div>
 
               {/* Vendor Name (read-only) */}
@@ -190,7 +169,7 @@ export default function AskQuestion() {
                   Vendor Name
                 </label>
                 <div className="w-full border border-gray-100 bg-gray-50 rounded-xl px-4 py-3 text-sm text-gray-400 font-medium">
-                  {vendorName}
+                  {vendor.name}
                 </div>
               </div>
 
@@ -211,7 +190,7 @@ export default function AskQuestion() {
                 </p>
               </div>
 
-              {/* Error */}
+              {/* API Error */}
               {error && (
                 <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl px-4 py-3">
                   {error}
@@ -221,30 +200,14 @@ export default function AskQuestion() {
               {/* Submit */}
               <button
                 onClick={handleSubmit}
-                disabled={!question.trim() || loading}
+                disabled={!canSubmit}
                 className="w-full bg-gradient-to-r from-[#7c5cbf] to-[#e84393] text-white font-bold py-4 rounded-2xl hover:opacity-90 transition text-base shadow-lg disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {loading ? (
                   <>
-                    <svg
-                      className="animate-spin h-5 w-5 text-white"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      />
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8v8z"
-                      />
+                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
                     </svg>
                     Sending…
                   </>
@@ -258,49 +221,27 @@ export default function AskQuestion() {
           /* Success State */
           <div className="flex flex-col items-center justify-center text-center pt-16 px-4">
             <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#7c5cbf] to-[#e84393] flex items-center justify-center mb-5 shadow-xl">
-              <svg
-                width="36"
-                height="36"
-                fill="none"
-                stroke="white"
-                strokeWidth="2.5"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M5 13l4 4L19 7"
-                />
+              <svg width="36" height="36" fill="none" stroke="white" strokeWidth="2.5" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
             </div>
 
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
-              Question Sent!
-            </h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Question Sent!</h2>
 
             <p className="text-gray-500 text-sm mb-1">
               Hey{" "}
-              <span className="font-semibold text-gray-700">
-                {currentUser.name}
-              </span>
+              <span className="font-semibold text-gray-700">{userName}</span>
               , your question has been sent to
             </p>
-            <p className="text-[#7c5cbf] font-bold text-base mb-4">
-              {vendorName}
-            </p>
+            <p className="text-[#7c5cbf] font-bold text-base mb-8">{vendor.name}</p>
 
             <div className="flex flex-col gap-3 w-full">
-              {/* <button
-                onClick={() => navigate(-1)}
-                className="w-full bg-gradient-to-r from-[#7c5cbf] to-[#e84393] text-white font-bold py-4 rounded-2xl hover:opacity-90 transition shadow-lg"
-              >
-                Back to Vendor
-              </button> */}
               <button
                 onClick={() => {
                   setQuestion("");
                   setSubmitted(false);
                   setError(null);
+                  setNameError(false);
                 }}
                 className="w-full border border-gray-200 text-gray-500 font-semibold py-3.5 rounded-2xl hover:bg-gray-50 transition text-sm"
               >
